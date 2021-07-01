@@ -1,34 +1,42 @@
 # shellcheck shell=bash
 version=44
 
-is_line=0
-is_splash=0
 is_color=0
-help_short="wslfetch [-hvlsc]"
+is_generic=0
+help_short="wslfetch [-hvcg] [-t THEME] [-o OPTIONS]"
+_tmp_cmdname="$0"
 
-for args; do
-	case $args in
-		-h|--help) help "$0" "$help_short"; exit;;
+PARSED_ARGUMENTS=$(getopt -a -n "$(basename $_tmp_cmdname)" -o hvtcgo: --long help,version,theme,colorbar,generic,options: -- "$@")
+[ "$?" != "0" ] && help "$_tmp_cmdname" "$help_short"
+
+eval set -- "$PARSED_ARGUMENTS"
+while :
+do
+	case "$1" in
+		-h|--help) help "$_tmp_cmdname" "$help_short"; exit;;
 		-v|--version) echo "wslu v$wslu_version; wslfetch v$version"; exit;;
-		-s|--splash) is_splash=1;;
-		-l|--line) is_line=1;;
-		-c|--colorbar) is_color=1;
+		-t|--theme) shift; WSLFETCH_THEME_PATH="$1"; shift;;
+		-c|--colorbar) is_color=1; shift;;
+		-g|--generic) is_generic=1; shift;;
+		-o|--options) shift; WSLFETCH_INFO_SECTION="$1"; shift;;
+		--) shift; break ;;
+		*) echo "Unexpected option: $1"
+			help "$_tmp_cmdname" "$help_short"
+			exit 1;;
 	esac
 done
 
-hostname=$(</etc/hostname)
-wslsys=$(wslsys)
-wslvers=$(echo "$wslsys" | grep -Po '^WSL Version: \K.*')
-branch=$(echo "$wslsys" | grep -Po '^Branch: \K.*')
-build=$(echo "$wslsys" | grep -Po '^Build: \K.*')
-release=$(echo "$wslsys" | grep -Po '^WSL Release: \K.*')
-kernel=$(echo "$wslsys" | grep -Po '^WSL Kernel: \K.*')
-uptime=$(echo "$wslsys" | grep -Po '^Windows Uptime: \K.*')
+debug_echo "is_color: $is_color"
+debug_echo "is_generic: $is_generic"
+debug_echo "WSLFETCH_INFO_SECTION: $WSLFETCH_INFO_SECTION"
+debug_echo "WSLFETCH_COLORBAR: $WSLFETCH_COLORBAR"
+debug_echo "WSLFETCH_ASCII_PATH: $WSLFETCH_ASCII_PATH"
 
+([[ "$is_generic" == "1" ]] || [[ -n "$WSLFETCH_THEME_PATH" ]] ) && distro=""
 case "$distro" in
 	'ubuntu')
 		t="${red}${bold}"
-		full_text=(
+		ascii_text=(
 			"${bold}${red}               .-/+oossssoo+/-.               ${reset}"
 			"${bold}${red}           \`:+ssssssssssssssssss+:\`           ${reset}"
 			"${bold}${red}         -+ssssssssssssssssssyyssss+-         ${reset}"
@@ -51,7 +59,7 @@ case "$distro" in
 			"${bold}${red}               .-/+oossssoo+/-.               ${reset}");;
 	'debian')
 		t="${light_red}${bold}"
-		full_text=(
+		ascii_text=(
 			"${white}         _,met\$\$\$\$\$gg.               ${reset}"
 			"${white}      ,g\$\$\$\$\$\$\$\$\$\$\$\$\$\$\$P.            ${reset}"
 			"${white}    ,g\$\$P\"\"       \"\"\"Y\$\$.\".          ${reset}"
@@ -71,7 +79,7 @@ case "$distro" in
 			"${white}                \`\"\"\"\"                ${reset}");;
 	'kali')
 		t="${light_blue}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_blue}..............                                     "
 			"${light_blue}            ..,;:ccc,.                             ${reset}"
 			"${light_blue}          ......''';lxO.                           ${reset}"
@@ -95,7 +103,7 @@ case "$distro" in
 			"${light_blue}                                             .     ${reset}");;
 	'opensuse')
 		t="${light_green}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_gray}             .;ldkO0000Okdl;.                   ${reset}"
 			"${light_gray}         .;d00xl:^''''''^:ok00d;.               ${reset}"
 			"${light_gray}       .d00l'                'o00d.             ${reset}"
@@ -116,7 +124,7 @@ case "$distro" in
 			"${light_gray}              '^:ldxkkkkxdl:^'                  ${reset}");;
  	'pengwin')
 		t="${purple}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_purple}                       ...\`               ${reset}"
 			"${light_purple}                       \`-///:-\`           ${reset}"
 			"${light_purple}                         .+${purple}ssys${light_purple}/          ${reset}"
@@ -134,7 +142,7 @@ case "$distro" in
 			"${light_purple}             \`.::/:.                      ${reset}");;
 	'wlinux')
 		t="${light_orange}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_orange}                 _.._                 ${reset}"
 			"${light_orange}              .-'    \`-.              ${reset}"
 			"${light_orange}             :          ;             ${reset}"
@@ -158,7 +166,7 @@ case "$distro" in
 			"${light_orange}        '-.__.'        '.__.-'        ${reset}");;
 	'sles')
 		t="${green}${bold}"
-		full_text=(
+		ascii_text=(
 			"${green}             .;ldkO0000Okdl;.               ${reset}"
 			"${green}         .;d00xl:^''''''^:ok00d;.           ${reset}"
 			"${green}       .d00l'                'o00d.         ${reset}"
@@ -179,7 +187,7 @@ case "$distro" in
 			"${green}              '^:ldxkkkkxdl:^'              ${reset}");;
 	'alpine')
 		t="${blue}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_blue}        ................          ${reset}"
 			"${light_blue}       ∴::::::::::::::::∴         ${reset}"
 			"${light_blue}      ∴::::::::::::::::::∴        ${reset}"
@@ -198,7 +206,7 @@ case "$distro" in
 			"${light_blue}       ∵::::::::::::::::∵         ${reset}");;
 	'archlinux')
 		t="${light_cyan}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_cyan}                   -\`                 ${reset}"
 			"${light_cyan}                  .o+\`                ${reset}"
 			"${light_cyan}                 \`ooo/                ${reset}"
@@ -220,7 +228,7 @@ case "$distro" in
 			"${cyan} .\`                                 \`/${reset}");;
 	'scilinux')
 		t="${light_blue}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_blue}                  =/;;/-                    ${reset}"
 			"${light_blue}                 +:    //                   ${reset}"
 			"${light_blue}                /;      /;                  ${reset}"
@@ -243,7 +251,7 @@ case "$distro" in
 			"${light_blue}                  '////'                    ${reset}");;
 	'oracle')
 		t="${red}${bold}"
-		full_text=(
+		ascii_text=(
 			"${red}      \`-/+++++++++++++++++/-.\`       ${reset}"
 			"${red}    \`/syyyyyyyyyyyyyyyyyyyyyyys/.    ${reset}"
 			"${red}   :yyyyo/-...............-/oyyyy/   ${reset}"
@@ -257,7 +265,7 @@ case "$distro" in
 			"${red}      \`.:/+ooooooooooooooo+/:.\`      ${reset}");;
 	'oldfedora'|'fedora')
 		t="${light_blue}${bold}"
-		full_text=(
+		ascii_text=(
 			"${light_blue}           /:-------------:\         ${reset}"
 			"${light_blue}        :-------------------::       ${reset}"
 			"${light_blue}      :-----------${white}/shhOHbmp${light_blue}---:\\     ${reset}"
@@ -277,7 +285,7 @@ case "$distro" in
 			"${light_blue} :---------------------://           ${reset}");;
 	'fedoraremix')
 		t="${white}${deep_purple}"
-		full_text=(
+		ascii_text=(
 			"${white}                                                             ${reset}"
 			"${white}                                                             ${reset}"
 			"${white}                                                             ${reset}"
@@ -294,9 +302,66 @@ case "$distro" in
 			"${white}                                                             ${reset}"
 			"${white}                                                             ${reset}"
 			"${white}                                                             ${reset}");;
+ 	'gentoo')
+		t="${white}${light_purple}"
+		ascii_text=(
+			"${light_purple}         -/oyddmdhs+:.               ${reset}"
+			"${light_purple}     -o${white}dNMMMMMMMMNNmhy+${light_purple}-\`            ${reset}"
+			"${light_purple}   -y${white}NMMMMMMMMMMMNNNmmdhy${light_purple}+-          ${reset}"
+			"${light_purple} \`o${white}mMMMMMMMMMMMMNmdmmmmddhhy${light_purple}/\`       ${reset}"
+			"${light_purple} om${white}MMMMMMMMMMMN${light_purple}hhyyyo${white}hmdddhhhd${light_purple}o\`     ${reset}"
+			"${light_purple}.y${white}dMMMMMMMMMMd${light_purple}hs++so/s${white}mdddhhhhdm${light_purple}+\`   ${reset}"
+			"${light_purple} oy${white}hdmNMMMMMMMN${light_purple}dyooy${white}dmddddhhhhyhN${light_purple}d.  ${reset}"
+			"${light_purple}  :o${white}yhhdNNMMMMMMMNNNmmdddhhhhhyym${light_purple}Mh  ${reset}"
+			"${light_purple}    .:${white}+sydNMMMMMNNNmmmdddhhhhhhmM${light_purple}my  ${reset}"
+			"${light_purple}       /m${white}MMMMMMNNNmmmdddhhhhhmMNh${light_purple}s:  ${reset}"
+			"${light_purple}    \`o${white}NMMMMMMMNNNmmmddddhhdmMNhs${light_purple}+\`   ${reset}"
+			"${light_purple}  \`s${white}NMMMMMMMMNNNmmmdddddmNMmhs${light_purple}/.     ${reset}"
+			"${light_purple} /N${white}MMMMMMMMNNNNmmmdddmNMNdso${light_purple}:\`       ${reset}"
+			"${light_purple}+M${white}MMMMMMNNNNNmmmmdmNMNdso${light_purple}/-          ${reset}"
+			"${light_purple}yM${white}MNNNNNNNmmmmmNNMmhs+/${light_purple}-\`            ${reset}"
+			"${light_purple}/h${white}MMNNNNNNNNMNdhs++/${light_purple}-\`               ${reset}"
+			"${light_purple}\`/${white}ohdmmddhys+++/:${light_purple}.\`                  ${reset}"
+			"${light_purple}  \`-//////:--.                       ${reset}");;
+	"cblm")
+		t="${blue}${bold}"
+		ascii_text=(
+			"${blue}  ____ ____    _     _                   ${reset}"
+			"${blue} / ___| __ )  | |   (_)_ __  _   ___  __ ${reset}"
+			"${blue}| |   |  _ \  | |   | | '_ \\| | | \\ \\/ / ${reset}"
+			"${blue}| |___| |_) | | |___| | | | | |_| |>  <  ${reset}"
+			"${blue} \\____|____/  |_____|_|_| |_|\\__,_/_/\\_\ ${reset}"
+			"${blue}   __  __            _                   ${reset}"
+			"${blue}  |  \\/  | __ _ _ __(_)_ __   ___ _ __   ${reset}"
+			"${blue}  | |\\/| |/ _\` | '__| | '_ \\ / _ \\ '__|  ${reset}"
+			"${blue}  | |  | | (_| | |  | | | | |  __/ |     ${reset}"
+			"${blue}  |_|  |_|\\__,_|_|  |_|_| |_|\\___|_|     ${reset}");;
+	"clear")
+		t="${blue}${bold}"
+		ascii_text=(
+		"${blue}          BBB               ${reset}"
+		"${blue}       BBBBBBBBB            ${reset}"
+		"${blue}     BBBBBBBBBBBBBBB        ${reset}"
+		"${blue}   BBBBBBBBBBBBBBBBBBBB     ${reset}"
+		"${blue}   BBBBBBBBBBB         BBB  ${reset}"
+		"${blue}  BBBBBBBB${brown}YYYYY             ${reset}"
+		"${blue}  BBBBBBBB${brown}YYYYYY            ${reset}"
+		"${blue}  BBBBBBBB${brown}YYYYYYY           ${reset}"
+		"${blue}  BBBBBBBBB${brown}YYYYY${white}W           ${reset}"
+		"${cyan} GG${blue}BBBBBBBY${brown}YYYY${white}WWW          ${reset}"
+		"${cyan} GGG${blue}BBBBBBB${brown}YY${white}WWWWWWWW       ${reset}"
+		"${cyan} GGGGGG${blue}BBBBBB${white}WWWWWWWW       ${reset}"
+		"${cyan} GGGGGGGG${blue}BBBB${white}WWWWWWWW       ${reset}"
+		"${cyan}GGGGGGGGGGG${blue}BBB${white}WWWWWWW       ${reset}"
+		"${cyan}GGGGGGGGGGGGG${blue}B${white}WWWWWW        ${reset}"
+		"${cyan}GGGGGGGG${white}WWWWWWWWWWW         ${reset}"
+		"${cyan}GG${white}WWWWWWWWWWWWWWWW          ${reset}"
+		"${white} WWWWWWWWWWWWWWWW           ${reset}"
+		"${white}      WWWWWWWWWW            ${reset}"
+		"${white}          WWW               ${reset}");;
 	*)
 		t="${cyan}${bold}"
-		full_text=(
+		ascii_text=(
 			"${cyan} /\$\$      /\$\$  /\$\$\$\$\$\$  /\$\$       "
 			"${cyan}| \$\$  /\$ | \$\$ /\$\$__  \$\$| \$\$	  "
 			"${cyan}| \$\$ /\$\$\$| \$\$| \$\$${reset}  ${cyan}\\__/| \$\$${reset}       "
@@ -307,47 +372,52 @@ case "$distro" in
 			"${cyan}|__/     \\__/ \\______/ |________/${reset} ");;
 esac
 
-
-info_text=("${t}Windows Subsystem for Linux (WSL${wslvers})${reset}"
-"${t}${USER}${reset}@${t}${hostname}${reset}"
-"${t}Build:${reset} ${build}"
-"${t}Branch:${reset} ${branch}"
-"${t}Release:${reset} ${release}"
-"${t}Kernel:${reset} ${kernel}"
-"${t}Uptime:${reset} ${uptime}"
-"${reset}"
-)
-
-if [[ "$is_color" == "1" ]]; then
-info_text+=("   \e[40m   \e[41m   \e[42m   \e[43m   \e[44m   \e[45m   \e[46m   \e[47m   ${reset}"
-"   \e[48;5;8m   \e[48;5;9m   \e[48;5;10m   \e[48;5;11m   \e[48;5;12m   \e[48;5;13m   \e[48;5;14m   \e[48;5;15m   ${reset}")
+if [[ -n "$WSLFETCH_THEME_PATH" ]]; then
+	debug_echo "custom theme detected: $WSLFETCH_THEME_PATH"
+	source "$WSLFETCH_THEME_PATH"
 fi
 
-function line {
-	if [[ "$1" == "1" ]]; then
-		CUR_TTY="$(tty)"
-		yes -- "${2:-=}" | tr -d $'\n' | head -c "$(stty -a <"$CUR_TTY" | head -1 | sed -e "s|^.*columns ||g" -e "s|;.*$||g")"
-	else
-		echo ""
-	fi
-}
+debug_echo "distro: $distro"
+debug_echo "t: ${t}color${reset}"
+debug_echo "ascii_text: ${ascii_text[@]}"
+
+SAVEIFS=$IFS
+IFS=$'\n'
+info_collect=($(wslsys $wslu_debug --wslfetch "${WSLFETCH_INFO_SECTION:-"windows-build,windows-rel-branch,wsl-release,wsl-kernel,wsl-ip,windows-uptime"}" "${t}"))
+IFS=$SAVEIFS
+
+wslf_ver="${info_collect[0]}"
+debug_echo "collected wsl version: $wslf_ver"
+
+debug_echo "constructing text"
+info_text=("${t}Windows Subsystem for Linux (WSL${wslf_ver})${reset}"
+"${t}${USER}${reset}@${t}$(</etc/hostname)${reset}")
+info_text+=("${info_collect[@]:1}")
+
+if [[ "$is_color" == "1" ]] || [[ "$WSLFETCH_COLORBAR" == "true" ]]; then
+	debug_echo "constructing colorbar"
+	info_text+=("${reset}"
+	"   \e[40m   \e[41m   \e[42m   \e[43m   \e[44m   \e[45m   \e[46m   \e[47m   ${reset}"
+	"   \e[48;5;8m   \e[48;5;9m   \e[48;5;10m   \e[48;5;11m   \e[48;5;12m   \e[48;5;13m   \e[48;5;14m   \e[48;5;15m   ${reset}")
+fi
 
 info_length=${#info_text[@]}
-full_length=${#full_text[@]}
+ascii_length=${#ascii_text[@]}
+if [[ $ascii_length -lt $info_length ]]; then
+	ascii_placeholder="$(yes -- " " | tr -d $'\n' | head -c $(( $(echo "${ascii_text[0]}" | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/\x1b[(]B$//g' | wc -m) - 1 )))"
+	for (( i=0; i<$((info_length - ascii_length)); i++ ));
+	do
+		ascii_text+=("$ascii_placeholder${reset}")
+	done
+	ascii_length=${#ascii_text[@]}
+fi
 
-line "$is_line" "-"
 # use for loop to read all values and indexes
-for (( i=0; i<full_length; i++ ));
+for (( i=0; i<ascii_length; i++ ));
 do
 	tmp=""
 	if [[ $i -le ${info_length} ]]; then
 		tmp="${info_text[$i]}"
 	fi
-	echo -e "${full_text[$i]}${tmp}"
+	echo -e "${ascii_text[$i]}${tmp}"
 done
-line "$is_line" "-"
-
-if [[ "$is_splash" == "1" ]]; then
-	sleep 2
-	clear
-fi

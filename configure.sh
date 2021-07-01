@@ -47,13 +47,16 @@ case $distro in
 		sudo apk add git bc gzip make bash-completion imagemagick
 		;;
 	Arch*)
-		sudo pacman -Syyu git bc gzip make bash-completion imagemagick --noconfirm
+		sudo pacman -Syyu git bc gzip make bash-completion imagemagick iproute2 --noconfirm
 		;;
 	*Oracle*|Scientific*)
-		sudo yum install -y git bc gzip make bash-completion imagemagick
+		sudo yum install -y git bc gzip make bash-completion imagemagick iproute
 		;;
 	*Fedora*)
 		sudo dnf install -y git bc gzip make bash-completion ImageMagick
+		;;
+	*Gentoo*)
+		sudo emerge -a n sys-devel/bc media-gfx/imagemagick app-shells/bash-completion sys-devel/make dev-vcs/git app-arch/gzip
 		;;
 	*Generic*) [ "fedora" == "$(grep -e "LIKE=" /etc/os-release | sed -e 's/ID_LIKE=//g')" ] && sudo dnf install -y git || exit 1;;
 	*) exit 1;;

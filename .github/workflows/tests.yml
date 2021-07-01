@@ -6,5 +6,20 @@ jobs:
     runs-on: windows-2019
     steps:
       - uses: actions/checkout@v2
-      - name: Doing nothing
-        run: echo "won't work right now, implement until GitHub action properly support WSL. related issue - https://github.com/actions/virtual-environments/issues/50"
+      - uses: Vampire/setup-wsl@v1
+        with:
+          distribution: Ubuntu-20.04
+          update: 'true'
+          set-as-default: 'true'
+          additional-packages:
+            gzip
+            make
+            desktop-file-utils
+            bats
+      - shell: wsl-bash -u root {0}
+        run: |
+          make
+          make install
+          make test
+
+

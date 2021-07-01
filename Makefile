@@ -20,7 +20,7 @@ VERTMP = $(shell cat ./VERSION)
 
 all: doc
 	[ -d $(OUTPATH) ] || mkdir $(OUTPATH)
-	sed -e s/VERSIONPLACEHOLDER/"$(VERTMP)"/g $(HEADER) > $(HEADER).tmp; \
+	sed -e 's/VERSIONPLACEHOLDER/'$(VERTMP)'/' -e 's|PREFIXPLACEHOLDER|'$(PREFIX)'|' $(HEADER) > $(HEADER).tmp; \
 	for file in $(SOURCES); do \
 		cat $(HEADER).tmp $$file > $(OUTPATH)/`basename $$file`; \
 		mv $(OUTPATH)/`basename $$file` $(OUTPATH)/`basename $$file .sh`; \
@@ -65,5 +65,8 @@ clean:
 	rm -rf $(OUTPATH)
 	rm -rf $(OUTMANPATH)
 
-test:
+test: 
 	bats -r tests
+
+coverage: 
+	kcov --include-path="./src,./out" ./tests/coverage bats -r tests

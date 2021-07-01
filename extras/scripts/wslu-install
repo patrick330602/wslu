@@ -25,6 +25,7 @@ case $distro in
 	Arch*) sudo pacman -Syyu git --noconfirm;;
 	Scientific*) sudo yum install -y git;;
 	*Fedora*) sudo dnf install -y git;;
+	*Gentoo*) sudo emerge -a n dev-vcs/git;;
 	*Generic*) [ "fedora" == "$(cat /etc/os-release | grep -e "LIKE=" | sed -e 's/ID_LIKE=//g')" ] && sudo dnf install -y git || exit 1;;
 	*) exit 1;;
 esac

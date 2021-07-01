@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-version="40"
+version="50"
 
 cname=""
 iconpath=""
@@ -8,21 +8,38 @@ is_interactive=0
 customname=""
 customenv=""
 
-help_short="wslusc [-gi] [-e PATH] [-n NAME] [-i FILE] COMMAND\nwslusc [-hv]"
+help_short="wslusc [-dIs] [-e PATH] [-n NAME] [-i FILE] [-g GUI_TYPE] COMMAND\nwslusc [-hv]"
 
-while [ "$1" != "" ]; do
+_tmp_cmdname="$0"
+
+PARSED_ARGUMENTS=$(getopt -a -n "$(basename $_tmp_cmdname)" -o hvd:Ie:n:i:gNs --long help,version,shortcut-debug:,interactive,path:,name:,icon:,gui,native,smart-icon -- "$@")
+[ "$?" != "0" ] && help "$_tmp_cmdname" "$help_short"
+
+function sc_debug {
+	debug_echo "sc_debug: called with $@"
+	dp="$(double_dash_p "$(wslvar -l Desktop)")"
+	winps_exec "Import-Module 'C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1';\$s=(New-Object -COM WScript.Shell).CreateShortcut('$dp\\$@');\$s;"
+}
+
+debug_echo "Parsed: $PARSED_ARGUMENTS"
+eval set -- "$PARSED_ARGUMENTS"
+while :
+do
 	case "$1" in
-		-I|--interactive)is_interactive=1;shift;; 
-		-i|--icon)shift;iconpath=$1;shift;;
-		-n|--name)shift;customname=$1;shift;;
-		-e|--env)shift;customenv=$1;shift;;
-		-g|--gui)is_gui=1;shift;;
+		-d|--shortcut-debug) shift; sc_debug "$@"; exit;;
+		-I|--interactive) is_interactive=1;shift;; 
+		-i|--icon) shift; iconpath=$1;shift;;
+		-s|--smart-icon) shift; WSLUSC_SMART_ICON_DETECTION="true";shift;;
+		-n|--name) shift;customname=$1;shift;;
+		-e|--env) shift;customenv=$1;shift;;
+		-g|--gui) is_gui=1;shift;;
+		-N|--native) WSLUSC_GUITYPE="native";shift;;
 		-h|--help) help "$0" "$help_short"; exit;;
 		-v|--version) echo "wslu v$wslu_version; wslusc v$version"; exit;;
-		*) cname_header="$1"; shift; cname="$*"; break;;
+		--) shift; cname_header="$1"; shift; cname="$*"; break;;
 	esac
 done
-
+debug_echo "cname_header: $cname_header cname: $cname"
 # interactive mode
 if [[ $is_interactive -eq 1 ]]; then
 	echo "${info} Welcome to wslu shortcut creator interactive mode."
@@ -38,6 +55,11 @@ if [[ $is_interactive -eq 1 ]]; then
 	customenv="${input:-$customenv}"
 	read -r -e -i "$iconpath" -p "${input_info} Custom icon Linux path (support ico/png/xpm/svg) [optional, ENTER for default]: " input
 	iconpath="${input:-$iconpath}"
+fi
+
+# supported gui check
+if [ $(wslu_get_build) -lt 21332 ] && [[ "$gui_type" == "NATIVE" ]]; then
+	error_echo "Your Windows 10 version do not support Native GUI, You need at least build 21332. Aborted" 35
 fi
 
 if [[ "$cname_header" != "" ]]; then
@@ -89,7 +111,19 @@ if [[ "$cname_header" != "" ]]; then
 	wslu_file_check "$script_location" "runHidden.vbs"
 
 	# handling icon
-	if [[ "$iconpath" != "" ]]; then
+	if [[ "$iconpath" != "" ]] || [[ "$WSLUSC_SMART_ICON_DETECTION" == "true" ]]; then
+		#handling smart icon first; always first 
+		if [[ "$WSLUSC_SMART_ICON_DETECTION" == "true" ]]; then
+			if wslpy_check; then
+				tmp_fcname="$(basename "$cname_header")"
+				iconpath="$(python3 -c "import wslpy.internal; print(wslpy.internal.findIcon(\"$tmp_fcname\"))")"
+				echo "${info} Icon Detector found icon $tmp_fcname at: $iconpath"
+			else
+				echo "${warn} Icon Detector cannot find icon."
+			fi
+		fi
+
+		# normal detection section
 		icon_filename="$(basename "$iconpath")"
 		ext="${iconpath##*.}"
 
@@ -142,7 +176,13 @@ if [[ "$cname_header" != "" ]]; then
 	fi
 
 	if [[ "$is_gui" == "1" ]]; then
-		winps_exec "Import-Module 'C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1';\$s=(New-Object -COM WScript.Shell).CreateShortcut('$tpath\\$new_cname.lnk');\$s.TargetPath='C:\\Windows\\System32\\wscript.exe';\$s.Arguments='$script_location_win\\runHidden.vbs $distro_location_win $distro_param $customenv /usr/share/wslu/wslusc-helper.sh $cname';\$s.IconLocation='$iconpath';\$s.Save();"
+		if [[ "$WSLUSC_GUITYPE" == "legacy" ]]; then
+			winps_exec "Import-Module 'C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1';\$s=(New-Object -COM WScript.Shell).CreateShortcut('$tpath\\$new_cname.lnk');\$s.TargetPath='C:\\Windows\\System32\\wscript.exe';\$s.Arguments='$script_location_win\\runHidden.vbs $distro_location_win $distro_param $customenv /usr/share/wslu/wslusc-helper.sh $cname';\$s.IconLocation='$iconpath';\$s.Save();"
+		elif [[ "$WSLUSC_GUITYPE" == "native" ]]; then
+					winps_exec "Import-Module 'C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1';\$s=(New-Object -COM WScript.Shell).CreateShortcut('$tpath\\$new_cname.lnk');\$s.TargetPath='C:\\Windows\\System32\\wslg.exe';\$s.Arguments='~ -d $WSL_DISTRO_NAME $customenv $cname';\$s.IconLocation='$iconpath';\$s.Save();"
+		else
+			error_echo "bad GUI type, aborting" 22
+		fi
 	else
 		winps_exec "Import-Module 'C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\Modules\\Microsoft.PowerShell.Utility\\Microsoft.PowerShell.Utility.psd1';\$s=(New-Object -COM WScript.Shell).CreateShortcut('$tpath\\$new_cname.lnk');\$s.TargetPath='$distro_location_win';\$s.Arguments='$distro_param $customenv bash -l -c $cname';\$s.IconLocation='$iconpath';\$s.Save();"
 	fi

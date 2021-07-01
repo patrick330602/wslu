@@ -87,13 +87,25 @@ jobs:
         with:
           name: RPMs
           path: compiled_rpms
-      # - name: deploy RPM source to rpm-wslu
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GIT_DEPLOY_KEY }}
-      #   run: |
-      #     git config --global user.email "me@patrickwu.space"
-      #     git config --global user.name "Jinming Wu, Patrick"
-      #     git clone --depth 1 https://patrick330602:$GH_TOKEN@github.com/wslutilities/rpm-wslu.git rpm-repo
-      #     git --git-dir=./rpm-repo/.git --work-tree=./rpm-repo add -A
-      #     git --git-dir=./rpm-repo/.git --work-tree=./rpm-repo commit -m "RPM Packaging file update: $(date)"
-      #     git --git-dir=./rpm-repo/.git --work-tree=./rpm-repo push
+  coprdeploy:
+    name: COPR Deploying
+    needs: rpmbuild
+    container: fedora:latest
+    runs-on: ubuntu-latest
+    steps:
+        - name: Retrive package for deployment
+          uses: actions/download-artifact@v1
+          with:
+            name: RPMs
+        - name: Install API token for copr-cli
+          env:
+            API_TOKEN_CONTENT: ${{ secrets.COPR_API_TOKEN }}
+          run: |
+            mkdir -p "$HOME/.config"
+            echo "$API_TOKEN_CONTENT" > "$HOME/.config/copr"
+        - name: Install tooling for source RPM build
+          run: |
+            dnf -y install @development-tools @rpm-development-tools
+            dnf -y install copr-cli make
+        - name: Submit the build by uploading the source RPM
+          run: copr build praiskup/argparse-manpage-ci RPMs/*.src.rpm

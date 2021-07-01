@@ -20,8 +20,8 @@ function add_reg_alt {
 	if [ "$distro" == "archlinux" ] || [ "$distro" == "alpine" ]; then
 		error_echo "Unsupported action for this distro. Aborted." 34
 	else
-		sudo update-alternatives --install /usr/bin/x-www-browser x-www-browser "$(readlink -f "$0")" 30
-		sudo update-alternatives --install /usr/bin/www-browser www-browser "$(readlink -f "$0")" 30
+		sudo update-alternatives --install "$wslu_prefix"/bin/x-www-browser x-www-browser "$(readlink -f "$0")" 1
+		sudo update-alternatives --install "$wslu_prefix"/bin/www-browser www-browser "$(readlink -f "$0")" 1
 		exit
 	fi
 }

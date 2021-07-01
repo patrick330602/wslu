@@ -13,7 +13,8 @@ Currently, we have two features available:
 .in +4n
 .nf
 \fBts, time-sync\fR \- Time Sync
-\fBsm, auto-mount\fR \- Auto Mounting
+\fBam, auto-mount\fR \- Auto Mounting
+\fBmr, mem-reclaim\fR \- Memory Reclaimation
 .fi
 .in
 .SH COMMANDS
@@ -32,11 +33,11 @@ print a simple help.
 .in
 .fi
 .SS "Auto Mounting"
-Smart Mounting (\fIauto-mount\fR) feature allows you to mount all drives available on Windows to WSL. Requires sudo.
+Auto Mounting (\fIauto-mount\fR) feature allows you to mount all drives available on Windows to WSL. Requires sudo.
 .TP
 SYNOPSIS
 .B wslact auto-mount
-.RB [ \-h ]
+.RB [ \-mh ]
 .TP
 OPTIONS
 .nf
@@ -45,6 +46,20 @@ OPTIONS
 pass a list of options you want to pass to \fImount\fR command.
 .in
 .fi
+.nf
+.B -h, --help
+.in +4n
+print a simple help.
+.in
+.fi
+.SS "Memory Reclaimation"
+Memory Reclaimation (\fImem-reclaim\fR) feature allows you to reclaim memory by dropping memory cache. Requires sudo.
+.TP
+SYNOPSIS
+.B wslact auto-mount
+.RB [ \-h ]
+.TP
+OPTIONS
 .nf
 .B -h, --help
 .in +4n

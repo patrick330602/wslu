@@ -19,28 +19,28 @@
 
 # Version
 wslu_version=VERSIONPLACEHOLDER
+wslu_prefix="PREFIXPLACEHOLDER"
 
-# Speed up script by not using unicode.
+# Speed up script by using unicode.
 LC_ALL=C
 LANG=C
 
 # prevent bash -x
 set +x
 
-# checking interopability
-grep enabled /proc/sys/fs/binfmt_misc/WSLInterop >/dev/null || (echo "WSL Interopability is disabled. Please enable it before using WSL."; exit 1)
 # when --verbose, verbose; when --debug, debug.
 #
 # They should not exist at the same time, otherwise
 # the output would be too messy.
-wslu_debug=0
+wslu_debug=""
+wslu_c_p="$0"
 if [ "$1" == "--verbose" ]; then
-	echo -e '\e[38;5;202m\033[1m[verbose] Showing verbose output. \033(B\033[m'
+	echo -e '\e[38;5;202m\033[1m[verbose] Showing verbose output. \033(B\033[m' 1>&2
 	shift
 	set -x
 elif [ "$1" == "--debug" ]; then
-	wslu_debug=1
-	echo -e '\e[38;5;202m\033[1m[debug] Showing debug output. \033(B\033[m'
+	wslu_debug="--debug"
+	echo -e '\e[38;5;202m\033[1m[debug:'${wslu_c_p}'] Showing debug output. \033(B\033[m' 1>&2
 	shift
 fi
 
@@ -84,16 +84,39 @@ readonly BN_APR_EIGHTEEN=17134		#1803, Redstone 4, April 2018 Update
 readonly BN_OCT_EIGHTEEN=17763		#1809, Redstone 5, October 2018 Update
 readonly BN_MAY_NINETEEN=18362		#1903, 19H1, May 2019 Update
 readonly BN_NOV_NINETEEN=18363		#1909, 19H2, November 2019 Update
+readonly BN_MAY_TWENTYTY=19041		#2004, 20H1, May 2020 Update
 
-# functions
+# echo functions
 function debug_echo {
-	[ $wslu_debug -eq 1 ] && echo "${orange}${bold}[debug]${reset} $@"
+	[ "$wslu_debug" == "--debug" ] && echo "${orange}${bold}[debug:${wslu_c_p}]${reset} $@" 1>&2;
 }
 
 function error_echo {
 	echo "${error} $1"
 	exit $2
 }
+
+# source default config
+if [ -f "${wslu_prefix}/share/wslu/conf" ]; then
+	debug_echo "source default setting"
+	source "${wslu_prefix}/share/wslu/conf"
+fi
+
+# source user-defined config
+if [ -f "${wslu_prefix}/share/wslu/custom.conf" ]; then
+	debug_echo "${wslu_prefix}/share/wslu/custom.conf found, sourcing"
+	source "${wslu_prefix}/share/wslu/custom.conf"
+fi
+if [ -f "$HOME/.config/wslu/conf" ]; then
+	debug_echo "$HOME/.config/wslu/conf found, sourcing"
+	source "$HOME/.config/wslu/conf"
+fi
+if [ -f "$HOME/.wslurc" ]; then
+	debug_echo "$HOME/.wslurc found, sourcing"
+	source "$HOME/.wslurc"
+fi
+
+# functions
 
 function help {
 	app_name=$(basename "$1")
@@ -150,7 +173,9 @@ function chcp_com {
 }
 
 function winps_exec {
+	debug_echo "winps_exec: called with command $@"
 	cp="$(cat ~/.config/wslu/oemcp)"
+	debug_echo "winps_exec: cp: $cp"
 	chcp_com "$cp"
 	cp=$(($cp+0))
 	"$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -NonInteractive –ExecutionPolicy Bypass -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::InputEncoding = [System.Text.Encoding]::GetEncoding($cp); $@"
@@ -159,30 +184,43 @@ function winps_exec {
 	return $EXIT_STATUS
 }
 
+function wslu_get_build {
+	debug_echo "wslu_get_build: called"
+	build=$("$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuild | tail -n 2 | head -n 1 | sed -e 's|\r||g')
+	echo "${build##* }"
+}
+
 function baseexec_gen {
-	wslutmpbuild=$("$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuild | tail -n 2 | head -n 1 | sed -e 's|\r||g')
-	wslutmpbuild=${wslutmpbuild##* }
+	debug_echo "baseexec_gen: called"
+	wslutmpbuild="$(wslu_get_build)"
 	wslutmpbuild="$(( $wslutmpbuild + 0 ))"
+	debug_echo "baseexec_gen: winbuild: $wslutmpbuild"
 	if [ $wslutmpbuild -ge $BN_MAY_NINETEEN ]; then
 		# The environment variable only available in 19H1 or later.
+		debug_echo "baseexec_gen: 19H1 or higher"
 		wslu_distro_regpath=$("$(interop_prefix)"c/Windows/System32/reg.exe query "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Lxss" /s /f DistributionName 2>&1 | sed -e 's|\r||g' | grep -B1 -e "$WSL_DISTRO_NAME$" | head -n1 )
 		if "$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "$wslu_distro_regpath" /v PackageFamilyName &>/dev/null; then
 			wslu_distro_packagename=$("$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "$wslu_distro_regpath" /v PackageFamilyName | tail -n 2 | head -n 1 | sed -e 's|\r||g')
 			# if it is a store distro
+			debug_echo "baseexec_gen: store distro: $wslu_distro_packagename"
 			wslu_distro_packagename=${wslu_distro_packagename##* }
 			wslu_base_exec_folder_path="$(wslpath "$(winps_exec "[Environment]::GetFolderPath('LocalApplicationData')" | tr -d "\r")\\Microsoft\\WindowsApps\\$wslu_distro_packagename")"
+			debug_echo "baseexec_gen: base_exe_folder_path: $wslu_base_exec_folder_path"
 			wslpath -w "$(find "$wslu_base_exec_folder_path" -name "*.exe")" > ~/.config/wslu/baseexec
 		else
+			debug_echo "baseexec_gen: imported distro"
 			# if it is imported distro
 			echo "$(wslpath -w "$(interop_prefix)$(sysdrive_prefix)")Windows\\System32\\wsl.exe" > ~/.config/wslu/baseexec
 		fi
 	else
+		debug_echo "baseexec_gen: fallback mode"
 		# older version fallback.
 		echo "$(wslpath -w "$(interop_prefix)$(sysdrive_prefix)")\\Windows\\System32\\wsl.exe" > ~/.config/wslu/baseexec
 	fi
 }
 
 function var_gen {
+	debug_echo "var_gen: called"
 	date +"%s" > ~/.config/wslu/triggered_time
 
 	rm -f ~/.config/wslu/baseexec
@@ -195,7 +233,15 @@ function var_gen {
 
 }
 
+function wslu_function_check {
+	# from https://stackoverflow.com/questions/85880/determine-if-a-function-exists-in-bash
+	debug_echo "wslu_function_check: called with $@"
+	declare -f -F $1 > /dev/null
+	return $?
+}
+
 function wslu_file_check {
+	debug_echo "wslu_file_check: called with $@"
 	should_i_show=""
 	[[ "$3" == "?!S" ]] && should_i_show="n"
 
@@ -212,14 +258,35 @@ function wslu_file_check {
 	fi
 }
 
-function wslu_get_build {
-	build=$("$(interop_prefix)$(sysdrive_prefix)"/Windows/System32/reg.exe query "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion" /v CurrentBuild | tail -n 2 | head -n 1 | sed -e 's|\r||g')
-	echo "${build##* }"
+function wslpy_check {
+	debug_echo "wslpy_check"
+	if type python3 > /dev/null 2>&1; then
+		debug_echo "wslpy_check: python3 installed."
+		tmp_wslpy_ver="$(python3 -c "import wslpy; print(wslpy.__version__)" 2>/dev/null)"
+		if [[ "$tmp_wslpy_ver" != "" ]]; then
+			debug_echo "wslpy_check: wslpy installed."
+			older_ver="$(echo -e "$tmp_wslpy_ver\n0.1.0" | sort -n -t. | head -n1)"
+			if [[ "$older_ver" == "$tmp_wslpy_ver" ]]; then
+				debug_echo "wslpy_check: wslpy installed but a version < 0.1.0 is installed."
+				return 1
+			else
+				debug_echo "wslpy_check: wslpy >= 0.1.0 is installed."
+				return
+			fi
+		else
+			debug_echo "wslpy_check: wslpy not installed."
+			return 1
+		fi
+	else
+		debug_echo "wslpy_check: python3 not installed."
+		return 1
+	fi
 }
 
 
 # first run, saving some information
 if [ ! -d ~/.config/wslu ]; then
+	debug_echo "first run; creating ~/.config/wslu"
 	mkdir -p ~/.config/wslu
 fi
 
@@ -229,16 +296,20 @@ fi
 # 2. if update_time is also not present, i.e.,
 #    badly installed packages or installed via install script
 if [ ! -f ~/.config/wslu/triggered_time ] || [ ! -f /usr/share/wslu/updated_time ]; then
+	debug_echo "first run or update_time not present; calling var_gen"
 	var_gen
 # This gets triggered when:
 #    installed time is larger than the last triggered time
 elif [ $(cat ~/.config/wslu/triggered_time) -lt $(cat /usr/share/wslu/updated_time) ]; then
+	debug_echo "upgraded package; calling var_gen"
 	var_gen
 fi
 
 # basic distro detection
 distro="$(cat /etc/os-release | sed -n -e '/^NAME=.*/p'| sed -e 's/^NAME=\"//g')"
 case $distro in
+	*Clear\ Linux*) distro="clear";;
+	*Common\ Base\ Linux\ Mariner*) distro="cblm";;
 	*Pengwin*) distro="pengwin";;
 	*WLinux*) distro="wlinux";;
 	Ubuntu*) distro="ubuntu";;
@@ -252,6 +323,9 @@ case $distro in
 	Scientific*) distro="scilinux";;
 	*Fedora\ Remix\ for\ WSL*) distro="fedoraremix";;
 	*Fedora*) distro="fedora";;
+	*Gentoo*) distro="gentoo";;
 	*Generic*) [ "fedora" == "$(grep -e "LIKE=" /etc/os-release | sed -e 's/ID_LIKE=//g')" ] && distro="oldfedora" || distro="unknown";;
 	*) distro="unknown";;
 esac
+
+debug_echo "distro: $distro"

@@ -3,8 +3,8 @@ version="03"
 
 help_short="wslact COMMAND ..."
 
-function time_sync {
-	local help_short="wslact time-sync [-h]"
+function time_reset {
+	local help_short="wslact time-reset [-h]"
 
 	while [ "$1" != "" ]; do
 		case "$1" in
@@ -20,7 +20,7 @@ function time_sync {
 	echo "${info} Before Sync: $(date +"%d %b %Y %T %Z")"
 	if date -s "$(winps_exec "Get-Date -UFormat \"%m/%d/%Y %T %Z\"" | tr -d "\r")" >/dev/null; then
 		echo "${info} After Sync: $(date +"%d %b %Y %T %Z")"
-		echo "${info} Manual Time Sync Complete."
+		echo "${info} Manual Time Reset Complete."
 	else
 		error_echo "Time Sync failed." 1
 	fi
@@ -81,10 +81,29 @@ function auto_mount {
 	echo "${info} Auto mounting completed. $mount_s drive(s) succeed. $mount_f drive(s) failed. $mount_j drive(s) skipped."
 }
 
+function memory_reclaim {
+	local help_short="wslact memory-reclaim [-h]"
+
+	while [ "$1" != "" ]; do
+		case "$1" in
+			-h|--help) help "wslact" "$help_short"; exit;;
+			*) shift;;
+		esac
+	done
+
+	if [ "$EUID" -ne 0 ]; then
+		error_echo "\`wslact memory-reclaim\` requires you to run as root. Aborted." 1
+	fi
+
+	echo 1 > /proc/sys/vm/drop_caches
+	echo "${info} Memory Reclaimed."
+}
+
 while [ "$1" != "" ]; do
 	case "$1" in
+		ts|time-sync|tr|time-reset) time_reset "$@"; exit;;
 		am|auto-mount|sm|smart-mount) auto_mount "$@"; exit;;
-		ts|time-sync) time_sync "$@"; exit;;
+		mr|mem-reclaim) memory_reclaim "$@"; exit;;
 		-h|--help) help "$0" "$help_short"; exit;;
 		-v|--version) echo "wslu v$wslu_version; wslact v$version"; exit;;
 		*) error_echo "Invalid Input. Aborted." 22;;

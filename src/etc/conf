@@ -1,0 +1,58 @@
+# wslu - Windows 10 linux Subsystem Utility
+# conf - default configuration of wslu
+## DO NOT MODIFY THIS FILE!
+## please copy this file to custom.conf and modify in custom.conf
+
+# <https://github.com/wslutilities/wslu>
+# 2021, Patrick Wu <me@patrickwu.space>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+# general
+
+# wslact
+
+# wslfetch: the sections of info from wslsys to show in wslfetch.
+# Available options: 
+#    windows-install-date
+#    windows-rel-branch
+#    windows-build
+#    windows-full-build
+#    display-scaling
+#    windows-locale
+#    windows-theme
+#    windows-uptime
+#    wsl-uptime
+#    wsl-release
+#    wsl-kernel
+#    wsl-package-count
+# 'wsl-version' will be always ignored since it is builtin in wslfetch.
+WSLFETCH_INFO_SECTION="windows-build,windows-rel-branch,wsl-release,wsl-kernel,windows-uptime"
+
+# wslfetch: whether you want to display colorbar in wslfetch. This will override `-c/--colorbar` param.
+WSLFETCH_COLORBAR=false
+
+# wslfetch: This allows you to use your own customized theme.
+WSLFETCH_THEME_PATH=
+
+# wslusc: Default GUI type. Default type is 'legacy'. Use 'native' for Native GUI generation by default
+WSLUSC_GUITYPE="legacy"
+
+# wslusc: Smart Icon Detection. Requires wslpy (Requires python3S).
+WSLUSC_SMART_ICON_DETECTION=false
+
+# wslvar
+
+# wslview

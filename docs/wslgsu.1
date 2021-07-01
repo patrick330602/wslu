@@ -1,0 +1,45 @@
+.TH "WSLGSU" "1" "DATEPLACEHOLDER" "VERSIONPLACEHOLDER" "WSL Utilities User Manual"
+.SH NAME
+.B wslgsu
+- Component of Windows 10 Linux Subsystem Utility
+.SH SYNOSIS
+.B wslgsu
+.RB [ \-u
+.IR USERNAME ]
+.RB [ \-n 
+.IR NAME ]
+.RB [ \-S ]
+.PP
+.B wslgsu
+.RB [ \-hv ]
+.I SERVICE/COMMAND
+.SH DESCRIPTION
+This tool allows you to generate a WSL startup Task using the Windows Task Scheduler.
+.SH OPTIONS
+.TP
+.B -h, --help
+Print a simple help.
+.TP
+.B -v, --version
+Print current version.
+.TP
+.B -u, --username \fIUSERNAME\fR
+Use a separate user to execute the command/service. By default it's \fIroot\fR.
+.TP
+.B -n, --name \fINAME\fR
+Add an explicit name instead of the default of autoamtically extracting a name from the service/command.
+.TP
+.B -S, --service
+Using this option means you are addng a system service. without \fB-S\fR, you are adding a command to system. 
+.SH AUTHOR
+Created by Patrick Wu <me@patrickwu.space>
+.SH REPORTING BUGS
+Report bugs to <https://github.com/wslutilities/wslu/issues>
+.SH COPYRIGHT
+This is free software; you can redistribute it and/or modify it under
+the terms of the GNU GPL version 3 or (at your option) any later
+version.
+There is NO warranty; not even MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.
+.SH SEE ALSO
+wslu(7)
